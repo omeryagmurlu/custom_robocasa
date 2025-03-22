@@ -201,12 +201,15 @@ def extract_trajectory(
 """ The process that writes over the generated files to memory """
 
 
-def write_traj_to_file(args, output_path, total_samples, total_run, processes, mul_queue):
+def write_traj_to_file(
+    args, num_demos, output_path, total_samples, total_run, processes, mul_queue
+):
     f = h5py.File(args.dataset, "r")
     f_out = h5py.File(output_path, "w")
     data_grp = f_out.create_group("data")
     start_time = time.time()
     num_processed = 0
+    num_written = 0
 
     try:
         while (total_run.value < (processes)) or not mul_queue.empty():
@@ -301,6 +304,9 @@ def write_traj_to_file(args, output_path, total_samples, total_run, processes, m
                     print("++" * 50)
                     print(f"Error at Process {process_num} on episode {ep} with \n\n {e}")
                     print("++" * 50)
+                    print(
+                        f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
+                    )
                     raise Exception("Write out to file has failed")
                 print(
                     "ep {}: wrote {} transitions to group {} at process {} with {} finished. Datagen rate: {:.2f} sec/demo".format(
@@ -311,6 +317,10 @@ def write_traj_to_file(args, output_path, total_samples, total_run, processes, m
                         total_run.value,
                         (time.time() - start_time) / num_processed,
                     )
+                )
+                num_written = num_written + 1
+                print(
+                    f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
                 )
     except KeyboardInterrupt:
         print("Control C pressed. Closing File and ending \n\n\n\n\n\n\n")
@@ -397,7 +407,7 @@ def extract_multiple_trajectories(
         print("*>*" * 50)
         print("Error process num {}:".format(process_num))
         print(e)
-        print(traceback.format_exc())
+        # print(traceback.format_exc())
         print("*>*" * 50)
         print()
 
@@ -505,7 +515,7 @@ def extract_multiple_trajectories_with_error(
             print("_" * 50)
             print("Process {}:".format(process_num))
             print("Error processing demo index {}: {}".format(ind, e))
-            print(traceback.format_exc())
+            # print(traceback.format_exc())
             print("_" * 50)
             del env
             env = create_env_with_wrappers(env_meta["env_name"], args)
@@ -613,6 +623,7 @@ def dataset_states_to_obs_multiprocessing(args):
         demos = demos[: args.n]
 
     num_demos = len(demos)
+    print("Number of demos: {}".format(num_demos))
     f.close()
 
     env_meta = DatasetUtils.get_env_metadata_from_dataset(dataset_path=args.dataset)
@@ -647,6 +658,7 @@ def dataset_states_to_obs_multiprocessing(args):
         target=write_traj_to_file,
         args=(
             args,
+            num_demos,
             output_path,
             total_samples_shared,
             num_finished,
