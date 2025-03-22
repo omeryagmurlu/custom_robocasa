@@ -3,29 +3,26 @@ Script to extract observations from low-dimensional simulation states in a roboc
 Adapted from robomimic's dataset_states_to_obs.py script.
 """
 
-import os
-import json
-from typing import OrderedDict
-import h5py
 import argparse
-import numpy as np
-from copy import deepcopy
+import json
 import multiprocessing
+import os
 import queue
 import time
 import traceback
+from copy import deepcopy
+from typing import OrderedDict
 
-from robocasa.utils.env_utils import create_env
-import robocasa.utils.robomimic.robomimic_tensor_utils as TensorUtils
+import h5py
+import numpy as np
 import robocasa.utils.robomimic.robomimic_dataset_utils as DatasetUtils
-from tqdm import tqdm
-
-from custom_robocasa.env_wrappers.robosuite_wrapper import RobosuiteWrapper
-from custom_robocasa.env_wrappers.segmentation_wrapper import SegmentationWrapper
-from custom_robocasa.env_wrappers.point_cloud_wrapper import PointCloudWrapper
+import robocasa.utils.robomimic.robomimic_tensor_utils as TensorUtils
 from custom_robocasa.env_wrappers.point_cloud_sampling_wrapper import (
     PointCloudSamplingWrapper,
 )
+from custom_robocasa.env_wrappers.point_cloud_wrapper import PointCloudWrapper
+from custom_robocasa.env_wrappers.robosuite_wrapper import RobosuiteWrapper
+from custom_robocasa.env_wrappers.segmentation_wrapper import SegmentationWrapper
 from custom_robocasa.env_wrappers.segmented_point_cloud_sampling_wrapper import (
     SegmentedPointCloudSamplingWrapper,
 )
@@ -35,6 +32,8 @@ from custom_robocasa.utils.point_cloud.sampling.fps_pc_sampler import (
 from custom_robocasa.utils.point_cloud.sampling.uniform_pc_sampler import (
     UniformPointCloudSampler,
 )
+from robocasa.utils.env_utils import create_env
+from tqdm import tqdm
 from utils.transform_utils import (
     axisangle2quat_numpy,
     mat2quat_numpy,
@@ -85,9 +84,7 @@ def extract_trajectory(
         global_actions[:, :3] = np.einsum("ij, nj -> ni", base_rot, actions[:, :3])
 
         rot_mats = quat2mat_numpy(axisangle2quat_numpy(actions[:, 3:6]))
-        global_rot_mats = np.einsum(
-            "ij, njk, kl -> nil", base_rot, rot_mats, base_rot.T
-        )
+        global_rot_mats = np.einsum("ij, njk, kl -> nil", base_rot, rot_mats, base_rot.T)
         global_actions[:, 3:6] = quat2axisangle_numpy(mat2quat_numpy(global_rot_mats))
 
     traj = dict(
@@ -129,7 +126,7 @@ def extract_trajectory(
         for obs_key in obs:
             if args.dont_store_image and "image" in obs_key:
                 obs_keys_to_remove.append(obs_key)
-            
+
             if args.dont_store_depth and "depth" in obs_key:
                 obs_keys_to_remove.append(obs_key)
 
@@ -181,9 +178,7 @@ def extract_trajectory(
 
     # convert list of dict to dict of list for obs dictionaries (for convenient writes to hdf5 dataset)
     traj["obs"] = TensorUtils.list_of_flat_dict_to_dict_of_list(traj["obs"])
-    traj["datagen_info"] = TensorUtils.list_of_flat_dict_to_dict_of_list(
-        traj["datagen_info"]
-    )
+    traj["datagen_info"] = TensorUtils.list_of_flat_dict_to_dict_of_list(traj["datagen_info"])
 
     # list to numpy array
     for k in traj:
@@ -192,9 +187,7 @@ def extract_trajectory(
         if isinstance(traj[k], dict):
             for kp in traj[k]:
                 if isinstance(traj[k][kp][0], dict):
-                    traj[k][kp] = TensorUtils.list_of_flat_dict_to_dict_of_list(
-                        traj[k][kp]
-                    )
+                    traj[k][kp] = TensorUtils.list_of_flat_dict_to_dict_of_list(traj[k][kp])
                     for kpp in traj[k][kp]:
                         traj[k][kp][kpp] = np.array(traj[k][kp][kpp])
                 else:
@@ -208,9 +201,7 @@ def extract_trajectory(
 """ The process that writes over the generated files to memory """
 
 
-def write_traj_to_file(
-    args, output_path, total_samples, total_run, processes, mul_queue
-):
+def write_traj_to_file(args, output_path, total_samples, total_run, processes, mul_queue):
     f = h5py.File(args.dataset, "r")
     f_out = h5py.File(output_path, "w")
     data_grp = f_out.create_group("data")
@@ -227,17 +218,13 @@ def write_traj_to_file(
                 process_num = item[2]
                 try:
                     ep_data_grp = data_grp.create_group(ep)
-                    ep_data_grp.create_dataset(
-                        "actions", data=np.array(traj["actions"])
-                    )
+                    ep_data_grp.create_dataset("actions", data=np.array(traj["actions"]))
                     if args.global_actions:
                         ep_data_grp.create_dataset(
                             "global_actions", data=np.array(traj["global_actions"])
                         )
                     ep_data_grp.create_dataset("states", data=np.array(traj["states"]))
-                    ep_data_grp.create_dataset(
-                        "rewards", data=np.array(traj["rewards"])
-                    )
+                    ep_data_grp.create_dataset("rewards", data=np.array(traj["rewards"]))
                     ep_data_grp.create_dataset("dones", data=np.array(traj["dones"]))
                     # ep_data_grp.create_dataset(
                     #     "actions_abs", data=np.array(traj["actions_abs"])
@@ -312,9 +299,7 @@ def write_traj_to_file(
                     total_samples.value += traj["actions"].shape[0]
                 except Exception as e:
                     print("++" * 50)
-                    print(
-                        f"Error at Process {process_num} on episode {ep} with \n\n {e}"
-                    )
+                    print(f"Error at Process {process_num} on episode {ep} with \n\n {e}")
                     print("++" * 50)
                     raise Exception("Write out to file has failed")
                 print(
@@ -459,8 +444,7 @@ def extract_multiple_trajectories_with_error(
     if args.filter_key is not None:
         print("using filter key: {}".format(args.filter_key))
         demos = [
-            elem.decode("utf-8")
-            for elem in np.array(f["mask/{}".format(args.filter_key)])
+            elem.decode("utf-8") for elem in np.array(f["mask/{}".format(args.filter_key)])
         ]
     else:
         demos = list(f["data"].keys())
@@ -481,9 +465,7 @@ def extract_multiple_trajectories_with_error(
             states = f["data/{}/states".format(ep)][()]
             initial_state = dict(states=states[0])
             initial_state["model"] = f["data/{}".format(ep)].attrs["model_file"]
-            initial_state["ep_meta"] = f["data/{}".format(ep)].attrs.get(
-                "ep_meta", None
-            )
+            initial_state["ep_meta"] = f["data/{}".format(ep)].attrs.get("ep_meta", None)
 
             # extract obs, rewards, dones
             actions = f["data/{}/actions".format(ep)][()]
@@ -620,8 +602,7 @@ def dataset_states_to_obs_multiprocessing(args):
     if args.filter_key is not None:
         print("using filter key: {}".format(args.filter_key))
         demos = [
-            elem.decode("utf-8")
-            for elem in np.array(f["mask/{}".format(args.filter_key)])
+            elem.decode("utf-8") for elem in np.array(f["mask/{}".format(args.filter_key)])
         ]
     else:
         demos = list(f["data"].keys())
