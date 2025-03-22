@@ -11,6 +11,9 @@ import queue
 import time
 import traceback
 from copy import deepcopy
+
+# from robomimic.utils.log_utils import log_warning
+from logging import getLogger
 from typing import OrderedDict
 
 import h5py
@@ -41,7 +44,7 @@ from utils.transform_utils import (
     quat2mat_numpy,
 )
 
-# from robomimic.utils.log_utils import log_warning
+logger = getLogger(__name__)
 
 
 def extract_trajectory(
@@ -304,7 +307,7 @@ def write_traj_to_file(
                     print("++" * 50)
                     print(f"Error at Process {process_num} on episode {ep} with \n\n {e}")
                     print("++" * 50)
-                    print(
+                    logger.info(
                         f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
                     )
                     raise Exception("Write out to file has failed")
@@ -319,7 +322,7 @@ def write_traj_to_file(
                     )
                 )
                 num_written = num_written + 1
-                print(
+                logger.info(
                     f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
                 )
     except KeyboardInterrupt:
@@ -411,7 +414,9 @@ def extract_multiple_trajectories(
         print("*>*" * 50)
         print()
 
-    num_finished.value = num_finished.value + 1
+    # ugh, increment is not atomic I lost a night of work to this since the batch script deadlocked
+    with num_finished.get_lock():  # xplicitly acquire the lock
+        num_finished.value = num_finished.value + 1
 
 
 def retrieve_new_index(process_num, current_work_array, work_queue, lock):
