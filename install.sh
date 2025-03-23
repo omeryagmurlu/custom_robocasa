@@ -8,6 +8,8 @@ cd ..
 
 pip install -r requirements.txt
 
+pip install -e .
+
 python -m robocasa.scripts.download_kitchen_assets
 
 python -m robosuite.scripts.setup_macros

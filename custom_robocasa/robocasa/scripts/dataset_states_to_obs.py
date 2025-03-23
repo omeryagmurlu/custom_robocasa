@@ -13,7 +13,6 @@ import traceback
 from copy import deepcopy
 
 # from robomimic.utils.log_utils import log_warning
-from logging import getLogger
 from typing import OrderedDict
 
 import h5py
@@ -43,8 +42,6 @@ from utils.transform_utils import (
     quat2axisangle_numpy,
     quat2mat_numpy,
 )
-
-logger = getLogger(__name__)
 
 
 def extract_trajectory(
@@ -307,7 +304,7 @@ def write_traj_to_file(
                     print("++" * 50)
                     print(f"Error at Process {process_num} on episode {ep} with \n\n {e}")
                     print("++" * 50)
-                    logger.info(
+                    print(
                         f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
                     )
                     raise Exception("Write out to file has failed")
@@ -322,7 +319,7 @@ def write_traj_to_file(
                     )
                 )
                 num_written = num_written + 1
-                logger.info(
+                print(
                     f"num_demos/num_processed/num_written: {num_demos}/{num_processed}/{num_written}"
                 )
     except KeyboardInterrupt:
